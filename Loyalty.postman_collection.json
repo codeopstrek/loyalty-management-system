@@ -1,0 +1,333 @@
+{
+  "info": {
+    "_postman_id": "06bf4ecc-a8f6-46b8-b954-521d0c3bf918",
+    "name": "Loyalty",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "33768339"
+  },
+  "item": [
+    {
+      "name": "Customer",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"John Doe\",\r\n    \"email\": \"john@test.com\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/customers",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST http://localhost:8080/api/customers \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"John Doe\",\"email\":\"john@test.com\"}'\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/customers/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "customers",
+                "1"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET http://localhost:8080/api/customers/1\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/customers",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "customers"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET http://localhost:8080/api/customers\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Customers",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"John Updated\",\"email\":\"john.updated@test.com\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/customers/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "customers",
+                "1"
+              ]
+            },
+            "description": "Generated from cURL: curl -X PUT http://localhost:8080/api/customers/1 \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"John Updated\",\"email\":\"john.updated@test.com\"}'"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/customers/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "customers",
+                "1"
+              ]
+            },
+            "description": "Generated from cURL: curl -X DELETE http://localhost:8080/api/customers/1"
+          },
+          "response": []
+        },
+        {
+          "name": "Activate Customer",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/customers/1/activate",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "customers",
+                "1",
+                "activate"
+              ]
+            },
+            "description": "Generated from cURL: curl -X PATCH http://localhost:8080/api/customers/1/activate\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Customer",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/customers/1/deactivate",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "customers",
+                "1",
+                "deactivate"
+              ]
+            },
+            "description": "Generated from cURL: curl -X PATCH http://localhost:8080/api/customers/1/deactivate\n"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Transaction",
+      "item": [
+        {
+          "name": "Earn Point",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\":1,\"points\":100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/transactions/earn",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "transactions",
+                "earn"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST http://localhost:8080/api/transactions/earn \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"customerId\":1,\"points\":100}'"
+          },
+          "response": []
+        },
+        {
+          "name": "Redeem Point",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n\r\n  \"transactionId\": \"3f2a1b4c-9d8e-4f7a-b6c2-1a2b3c4d5e6f\",\r\n  \"points\": 30\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/transactions/redeem",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "transactions",
+                "redeem"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST http://localhost:8080/api/transactions/redeem \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"customerId\":1,\"points\":30}'"
+          },
+          "response": []
+        },
+        {
+          "name": "Refund Point",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"customerId\": 2,\r\n  \"redeemTxnId\": \"c2977c32-c32b-401b-a246-b22c6ab6143b\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/transactions/refund",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "transactions",
+                "refund"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST http://localhost:8080/api/transactions/refund \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"customerId\":1,\"points\":30}'\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/transactions/customer/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "transactions",
+                "customer",
+                "1"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET http://localhost:8080/api/transactions/customer/1"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
