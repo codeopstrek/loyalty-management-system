@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
+import org.slf4j.MDC;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,6 +19,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
 
+	private String requestId;
     private int status;
     private String message;
     private LocalDateTime timestamp;
@@ -25,6 +28,7 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> success(int status, String message, T data) {
         return ApiResponse.<T>builder()
+        		.requestId(MDC.get("requestId"))
                 .status(status)
                 .message(message)
                 .timestamp(LocalDateTime.now())
@@ -34,6 +38,7 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> failure(int status, String message, List<String> errors) {
         return ApiResponse.<T>builder()
+        		.requestId(MDC.get("requestId"))
                 .status(status)
                 .message(message)
                 .timestamp(LocalDateTime.now())

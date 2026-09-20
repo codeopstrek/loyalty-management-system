@@ -18,6 +18,8 @@ import com.loyalty.loyaltyprogram.service.CustomerService;
 import com.loyalty.loyaltyprogram.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.ObjectMapper;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,203 +33,221 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
-    private final CustomerRepository customerRepository;
-    private final TransactionRepository transactionRepository;
-    private final CustomerService customerService;
+	private final CustomerRepository customerRepository;
+	private final TransactionRepository transactionRepository;
+	private final CustomerService customerService;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    @Transactional
-    public Transaction earnPoints(AddPointsRequestDto requestDto) {
-        log.info("Initiating EARN transaction process | customerId: {}, points: {}", 
-                requestDto.getCustomerId(), requestDto.getPoints());
+	@Override
+	@Transactional
+	public Transaction earnPoints(AddPointsRequestDto requestDto) {
+		String payload = toJsonString(requestDto);
 
-        Customer customer = customerService.getCustomerById(requestDto.getCustomerId());
-        validateActive(customer);
+		log.atInfo().setMessage("Initiating EARN transaction process")
+				.addKeyValue("customerId", requestDto.getCustomerId())
+				.addKeyValue("points", requestDto.getPoints())
+				.addKeyValue("payload", payload).log();
 
-        log.info("Customer verified and active | customerId: {}, currentBalance: {}", 
-                customer.getCustomerId(), customer.getRedeemablePoints());
+		Customer customer = customerService.getCustomerById(requestDto.getCustomerId());
+		validateActive(customer);
 
-        double previousPoints = customer.getRedeemablePoints();
-        customer.setRedeemablePoints(previousPoints + requestDto.getPoints());
-        customerRepository.save(customer);
-        
-        log.info("Customer points credited | customerId: {}, previousBalance: {}, newBalance: {}", 
-                customer.getCustomerId(), previousPoints, customer.getRedeemablePoints());
+		log.atInfo().setMessage("Customer verified and active").addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("currentBalance", customer.getRedeemablePoints()).log();
 
-        Transaction transaction = Transaction.builder()
-                .customerId(customer.getCustomerId())
-                .transactionType(TransactionType.EARNED)
-                .status(TransactionStatus.SUCCESS)
-                .timestamp(LocalDateTime.now())
-                .points(requestDto.getPoints())
-                .earnTxnId(UUID.randomUUID().toString())
-                .build();
+		double previousPoints = customer.getRedeemablePoints();
+		customer.setRedeemablePoints(previousPoints + requestDto.getPoints());
+		customerRepository.save(customer);
 
-        Transaction saved = transactionRepository.save(transaction);
-        log.info("EARN transaction completed successfully | earnTxnId: {}, customerId: {}, pointsEarned: {}", 
-                saved.getEarnTxnId(), customer.getCustomerId(), saved.getPoints());
-        return saved;
-    }
+		log.atInfo().setMessage("Customer points credited").addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("previousBalance", previousPoints)
+				.addKeyValue("newBalance", customer.getRedeemablePoints()).log();
 
-    @Override
-    @Transactional
-    public Transaction redeemPoints(RedeemRequestDto requestDto) {
-        log.info("Initiating REDEEM transaction process | customerId: {}, points: {}", 
-                requestDto.getCustomerId(), requestDto.getPoints());
+		Transaction transaction = Transaction.builder().customerId(customer.getCustomerId())
+				.transactionType(TransactionType.EARNED).status(TransactionStatus.SUCCESS)
+				.timestamp(LocalDateTime.now()).points(requestDto.getPoints()).earnTxnId(UUID.randomUUID().toString())
+				.build();
 
-        Customer customer = customerService.getCustomerById(requestDto.getCustomerId());
-        validateActive(customer);
+		Transaction saved = transactionRepository.save(transaction);
 
-        log.info("Customer verified and active | customerId: {}, currentBalance: {}", 
-                customer.getCustomerId(), customer.getRedeemablePoints());
+		log.atInfo().setMessage("EARN transaction completed successfully")
+				.addKeyValue("earnTxnId", saved.getEarnTxnId()).addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("pointsEarned", saved.getPoints()).addKeyValue("payload", toJsonString(saved)).log();
 
-        if (customer.getRedeemablePoints() < requestDto.getPoints()) {
-            log.warn("REDEEM transaction failed: Insufficient points | customerId: {}, available: {}, requested: {}", 
-                    customer.getCustomerId(), customer.getRedeemablePoints(), requestDto.getPoints());
+		return saved;
+	}
 
-            Transaction failedTxn = transactionRepository.save(
-                    Transaction.builder()
-                            .customerId(customer.getCustomerId())
-                            .transactionType(TransactionType.REDEEM)
-                            .status(TransactionStatus.FAILURE)
-                            .timestamp(LocalDateTime.now())
-                            .points(requestDto.getPoints())
-                            .redeemTxnId(UUID.randomUUID().toString())
-                            .build()
-            );
-            log.info("Failed REDEEM audit record created | redeemTxnId: {}, customerId: {}", 
-                    failedTxn.getRedeemTxnId(), customer.getCustomerId());
+	@Override
+	@Transactional
+	public Transaction redeemPoints(RedeemRequestDto requestDto) {
+		String payload = toJsonString(requestDto);
 
-            throw new PointsNotAvailableException("Insufficient points for customer id: " + customer.getCustomerId());
-        }
+		log.atInfo().setMessage("Initiating REDEEM transaction process")
+				.addKeyValue("customerId", requestDto.getCustomerId()).addKeyValue("points", requestDto.getPoints())
+				.addKeyValue("payload", payload).log();
 
-        double previousPoints = customer.getRedeemablePoints();
-        customer.setRedeemablePoints(previousPoints - requestDto.getPoints());
-        customerRepository.save(customer);
-        
-        log.info("Customer points debited | customerId: {}, previousBalance: {}, newBalance: {}", 
-                customer.getCustomerId(), previousPoints, customer.getRedeemablePoints());
+		Customer customer = customerService.getCustomerById(requestDto.getCustomerId());
+		validateActive(customer);
 
-        Transaction transaction = Transaction.builder()
-                .customerId(customer.getCustomerId())
-                .transactionType(TransactionType.REDEEM)
-                .status(TransactionStatus.SUCCESS)
-                .timestamp(LocalDateTime.now())
-                .points(requestDto.getPoints())
-                .redeemTxnId(UUID.randomUUID().toString())
-                .build();
+		log.atInfo().setMessage("Customer verified and active").addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("currentBalance", customer.getRedeemablePoints()).log();
 
-        Transaction saved = transactionRepository.save(transaction);
-        log.info("REDEEM transaction completed successfully | redeemTxnId: {}, customerId: {}, pointsRedeemed: {}", 
-                saved.getRedeemTxnId(), customer.getCustomerId(), saved.getPoints());
-        return saved;
-    }
+		if (customer.getRedeemablePoints() < requestDto.getPoints()) {
+			Transaction failedTxn = transactionRepository.save(
+					Transaction.builder().customerId(customer.getCustomerId()).transactionType(TransactionType.REDEEM)
+							.status(TransactionStatus.FAILURE).timestamp(LocalDateTime.now())
+							.points(requestDto.getPoints()).redeemTxnId(UUID.randomUUID().toString()).build());
 
-    @Override
-    @Transactional
-    public Transaction refundPoints(RefundRequestDto requestDto) {
-        log.info("Initiating refund process | customerId: {}, redeemTxnId: {}",
-                requestDto.getCustomerId(), requestDto.getRedeemTxnId());
+			log.atWarn().setMessage("REDEEM transaction failed: Insufficient points")
+					.addKeyValue("customerId", customer.getCustomerId())
+					.addKeyValue("availablePoints", customer.getRedeemablePoints())
+					.addKeyValue("requestedPoints", requestDto.getPoints())
+					.addKeyValue("redeemTxnId", failedTxn.getRedeemTxnId())
+					.addKeyValue("payload", toJsonString(failedTxn)).log();
 
-        Customer customer = customerService.getCustomerById(requestDto.getCustomerId());
-        validateActive(customer);
+			throw new PointsNotAvailableException("Insufficient points for customer id: " + customer.getCustomerId());
+		}
 
-        log.info("Customer verified and active | customerId: {}, currentBalance: {}", 
-                customer.getCustomerId(), customer.getRedeemablePoints());
+		double previousPoints = customer.getRedeemablePoints();
+		customer.setRedeemablePoints(previousPoints - requestDto.getPoints());
+		customerRepository.save(customer);
 
-        // Single DB call to fetch all transactions linked to this redeemTxnId
-        List<Transaction> relatedTxns = transactionRepository
-                .findByRedeemTxnIdAndCustomerId(requestDto.getRedeemTxnId(), requestDto.getCustomerId());
+		log.atInfo().setMessage("Customer points debited").addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("previousBalance", previousPoints)
+				.addKeyValue("newBalance", customer.getRedeemablePoints()).log();
 
-        // Verify original successful redemption
-        Transaction originalRedeemTxn = relatedTxns.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.REDEEM && t.getStatus() == TransactionStatus.SUCCESS)
-                .findFirst()
-                .orElseThrow(() -> {
-                    log.warn("Refund failed: Original redemption not found | customerId: {}, redeemTxnId: {}",
-                            requestDto.getCustomerId(), requestDto.getRedeemTxnId());
-                    saveFailedRefundAudit(customer.getCustomerId(), requestDto.getRedeemTxnId(), 0.0);
-                    return new TransactionNotFoundException("Redeem transaction not found with id: "
-                            + requestDto.getRedeemTxnId() + " for customer id: " + requestDto.getCustomerId());
-                });
+		Transaction transaction = Transaction.builder().customerId(customer.getCustomerId())
+				.transactionType(TransactionType.REDEEM).status(TransactionStatus.SUCCESS)
+				.timestamp(LocalDateTime.now()).points(requestDto.getPoints()).redeemTxnId(UUID.randomUUID().toString())
+				.build();
 
-        double pointsToRefund = originalRedeemTxn.getPoints();
-        log.info("Original redemption transaction verified | redeemTxnId: {}, pointsToRefund: {}",
-                requestDto.getRedeemTxnId(), pointsToRefund);
+		Transaction saved = transactionRepository.save(transaction);
 
-        // Extract the existing successful refund if it exists
-        Optional<Transaction> existingRefund = relatedTxns.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.REFUND && t.getStatus() == TransactionStatus.SUCCESS)
-                .findFirst();
+		log.atInfo().setMessage("REDEEM transaction completed successfully")
+				.addKeyValue("redeemTxnId", saved.getRedeemTxnId()).addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("pointsRedeemed", saved.getPoints()).addKeyValue("payload", toJsonString(saved)).log();
 
-        if (existingRefund.isPresent()) {
-            String existingRefundTxnId = existingRefund.get().getRefundTxnId();
+		return saved;
+	}
 
-            log.warn("Refund failed: Duplicate refund request | customerId: {}, redeemTxnId: {}, existingRefundTxnId: {}", 
-                    requestDto.getCustomerId(), requestDto.getRedeemTxnId(), existingRefundTxnId);
+	@Override
+	@Transactional
+	public Transaction refundPoints(RefundRequestDto requestDto) {
+		String payload = toJsonString(requestDto);
 
-            saveFailedRefundAudit(customer.getCustomerId(), requestDto.getRedeemTxnId(), pointsToRefund);
+		log.atInfo().setMessage("Initiating REFUND transaction process")
+				.addKeyValue("customerId", requestDto.getCustomerId())
+				.addKeyValue("redeemTxnId", requestDto.getRedeemTxnId()).addKeyValue("payload", payload)
+				.log();
 
-            throw new DuplicateResourceException(
-                    "Refund already initiated for redeemTxnId: " + requestDto.getRedeemTxnId() 
-                    + " (existing refundTxnId: " + existingRefundTxnId + ")", "redeemTxnId");
-        }
+		Customer customer = customerService.getCustomerById(requestDto.getCustomerId());
+		validateActive(customer);
 
-        log.info("Refund validations passed | customerId: {}, redeemTxnId: {}", 
-                requestDto.getCustomerId(), requestDto.getRedeemTxnId());
+		log.atInfo().setMessage("Customer verified and active").addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("currentBalance", customer.getRedeemablePoints()).log();
 
-        // Credit points back
-        double previousPoints = customer.getRedeemablePoints();
-        customer.setRedeemablePoints(previousPoints + pointsToRefund);
-        customerRepository.save(customer);
+		List<Transaction> relatedTxns = transactionRepository
+				.findByRedeemTxnIdAndCustomerId(requestDto.getRedeemTxnId(), requestDto.getCustomerId());
 
-        log.info("Customer points credited | customerId: {}, previousBalance: {}, newBalance: {}", 
-                customer.getCustomerId(), previousPoints, customer.getRedeemablePoints());
+		Transaction originalRedeemTxn = relatedTxns.stream().filter(
+				t -> t.getTransactionType() == TransactionType.REDEEM && t.getStatus() == TransactionStatus.SUCCESS)
+				.findFirst().orElseThrow(() -> {
+					log.atWarn().setMessage("Refund failed: Original redemption not found")
+							.addKeyValue("customerId", requestDto.getCustomerId())
+							.addKeyValue("redeemTxnId", requestDto.getRedeemTxnId())
+							.addKeyValue("payload", payload).log();
 
-        // Save successful refund
-        Transaction refundTxn = Transaction.builder()
-                .customerId(customer.getCustomerId())
-                .transactionType(TransactionType.REFUND)
-                .status(TransactionStatus.SUCCESS)
-                .timestamp(LocalDateTime.now())
-                .points(pointsToRefund)
-                .redeemTxnId(requestDto.getRedeemTxnId())
-                .refundTxnId(UUID.randomUUID().toString())
-                .build();
+					saveFailedRefundAudit(customer.getCustomerId(), requestDto.getRedeemTxnId(), 0.0);
 
-        Transaction saved = transactionRepository.save(refundTxn);
-        log.info("Refund process completed successfully | refundTxnId: {}, redeemTxnId: {}, customerId: {}, pointsRefunded: {}",
-                saved.getRefundTxnId(), saved.getRedeemTxnId(), customer.getCustomerId(), pointsToRefund);
+					return new TransactionNotFoundException("Redeem transaction not found with id: "
+							+ requestDto.getRedeemTxnId() + " for customer id: " + requestDto.getCustomerId());
+				});
 
-        return saved;
-    }
+		double pointsToRefund = originalRedeemTxn.getPoints();
 
-    @Override
-    public List<Transaction> getTransactionsByCustomer(Long customerId) {
-        log.debug("Fetching transactions for customerId: {}", customerId);
-        List<Transaction> transactions = transactionRepository.findByCustomerId(customerId);
-        log.info("Found {} transactions for customerId: {}", transactions.size(), customerId);
-        return transactions;
-    }
+		log.atInfo().setMessage("Original redemption transaction verified")
+				.addKeyValue("redeemTxnId", requestDto.getRedeemTxnId()).addKeyValue("pointsToRefund", pointsToRefund)
+				.log();
 
-    private void saveFailedRefundAudit(Long customerId, String redeemTxnId, Double points) {
-        Transaction failedRefund = Transaction.builder()
-                .customerId(customerId)
-                .transactionType(TransactionType.REFUND)
-                .status(TransactionStatus.FAILURE)
-                .timestamp(LocalDateTime.now())
-                .points(points)
-                .redeemTxnId(redeemTxnId)
-                .refundTxnId(UUID.randomUUID().toString())
-                .build();
-        transactionRepository.save(failedRefund);
-    }
+		Optional<Transaction> existingRefund = relatedTxns.stream().filter(
+				t -> t.getTransactionType() == TransactionType.REFUND && t.getStatus() == TransactionStatus.SUCCESS)
+				.findFirst();
 
-    private void validateActive(Customer customer) {
-        if (customer.getAccountStatus() == AccountStatus.INACTIVE) {
-            log.warn("Blocked transaction attempt — customerId: {} is INACTIVE", customer.getCustomerId());
-            throw new CustomerAccountDeactivatedException(
-                    "Customer account is inactive for id: " + customer.getCustomerId());
-        }
-    }
+		if (existingRefund.isPresent()) {
+			String existingRefundTxnId = existingRefund.get().getRefundTxnId();
+
+			log.atWarn().setMessage("Refund failed: Duplicate refund request")
+					.addKeyValue("customerId", requestDto.getCustomerId())
+					.addKeyValue("redeemTxnId", requestDto.getRedeemTxnId())
+					.addKeyValue("existingRefundTxnId", existingRefundTxnId)
+					.addKeyValue("payload", payload).log();
+
+			saveFailedRefundAudit(customer.getCustomerId(), requestDto.getRedeemTxnId(), pointsToRefund);
+
+			throw new DuplicateResourceException("Refund already initiated for redeemTxnId: "
+					+ requestDto.getRedeemTxnId() + " (existing refundTxnId: " + existingRefundTxnId + ")",
+					"redeemTxnId");
+		}
+
+		double previousPoints = customer.getRedeemablePoints();
+		customer.setRedeemablePoints(previousPoints + pointsToRefund);
+		customerRepository.save(customer);
+
+		log.atInfo().setMessage("Customer points credited").addKeyValue("customerId", customer.getCustomerId())
+				.addKeyValue("previousBalance", previousPoints)
+				.addKeyValue("newBalance", customer.getRedeemablePoints()).log();
+
+		Transaction refundTxn = Transaction.builder().customerId(customer.getCustomerId())
+				.transactionType(TransactionType.REFUND).status(TransactionStatus.SUCCESS)
+				.timestamp(LocalDateTime.now()).points(pointsToRefund).redeemTxnId(requestDto.getRedeemTxnId())
+				.refundTxnId(UUID.randomUUID().toString()).build();
+
+		Transaction saved = transactionRepository.save(refundTxn);
+
+		log.atInfo().setMessage("Refund process completed successfully")
+				.addKeyValue("refundTxnId", saved.getRefundTxnId()).addKeyValue("redeemTxnId", saved.getRedeemTxnId())
+				.addKeyValue("customerId", customer.getCustomerId()).addKeyValue("pointsRefunded", pointsToRefund)
+				.addKeyValue("previousBalance", previousPoints)
+				.addKeyValue("newBalance", customer.getRedeemablePoints()).addKeyValue("payload", toJsonString(saved))
+				.log();
+
+		return saved;
+	}
+
+	@Override
+	public List<Transaction> getTransactionsByCustomer(Long customerId) {
+		List<Transaction> transactions = transactionRepository.findByCustomerId(customerId);
+		log.atInfo().setMessage("Customer transactions fetched successfully").addKeyValue("customerId", customerId)
+				.addKeyValue("transactionCount", transactions.size())
+				.addKeyValue("payload", toJsonString(transactions)).log();
+		return transactions;
+	}
+
+	private void saveFailedRefundAudit(Long customerId, String redeemTxnId, Double points) {
+		Transaction failedRefund = Transaction.builder().customerId(customerId).transactionType(TransactionType.REFUND)
+				.status(TransactionStatus.FAILURE).timestamp(LocalDateTime.now()).points(points)
+				.redeemTxnId(redeemTxnId).refundTxnId(UUID.randomUUID().toString()).build();
+
+		transactionRepository.save(failedRefund);
+	}
+
+	private void validateActive(Customer customer) {
+		if (customer.getAccountStatus() == AccountStatus.INACTIVE) {
+			log.atWarn().setMessage("Blocked transaction attempt: Customer account is INACTIVE")
+					.addKeyValue("customerId", customer.getCustomerId()).log();
+
+			throw new CustomerAccountDeactivatedException(
+					"Customer account is inactive for id: " + customer.getCustomerId());
+		}
+	}
+
+	/**
+	 * Helper method to convert Objects/DTOs safely to JSON string representation for SLF4J structured logging.
+	 */
+	private String toJsonString(Object object) {
+		try {
+			return objectMapper.writeValueAsString(object);
+		} catch (Exception e) {
+			return String.valueOf(object);
+		}
+	}
 }
